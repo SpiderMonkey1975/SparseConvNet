@@ -10,6 +10,11 @@ static void cublasError(cublasStatus_t error, const char* file, int linenumber)
     case CUBLAS_STATUS_SUCCESS:
       break;
 
+    case CUBLAS_STATUS_NOT_SUPPORTED:
+      std::cout << file << " " << linenumber<<std::endl;
+      std::cout <<  "CUBLAS_STATUS_NOT_SUPPORTED\n";
+      break;
+
     case CUBLAS_STATUS_NOT_INITIALIZED:
       std::cout << file << " " << linenumber<<std::endl;
       std::cout <<  "CUBLAS_STATUS_NOT_INITIALIZED\n";
@@ -43,6 +48,11 @@ static void cublasError(cublasStatus_t error, const char* file, int linenumber)
     case CUBLAS_STATUS_INTERNAL_ERROR:
       std::cout << file << " " << linenumber<<std::endl;
       std::cout <<  "CUBLAS_STATUS_INTERNAL_ERROR\n";
+      break;
+
+    case CUBLAS_STATUS_LICENSE_ERROR:
+      std::cout << file << " " << linenumber<<std::endl;
+      std::cout <<  "CUBLAS_STATUS_LICENSE_ERROR\n";
       break;
     }
 }

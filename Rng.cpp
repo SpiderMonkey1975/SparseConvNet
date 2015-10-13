@@ -3,12 +3,20 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
+#include <time.h>
+#include <sys/time.h>
+#include <mach/clock.h>
+#include <mach/mach.h>
 
 RNG::RNG() : stdNormal(0,1), uniform01(0,1) {
-  // auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-  // std::mt19937 gen(seed);
   timespec ts;
-  clock_gettime(CLOCK_REALTIME, &ts);
+  clock_serv_t cclock;
+  mach_timespec_t mts;
+  host_get_clock_service( mach_host_self(), CALENDAR_CLOCK, &cclock );
+  clock_get_time(cclock, &mts);
+  mach_port_deallocate(mach_task_self(), cclock);
+  ts.tv_sec = mts.tv_sec;
+  ts.tv_nsec = mts.tv_nsec;
   RNGseedGeneratorMutex.lock();
   gen.seed(RNGseedGenerator()+ts.tv_nsec);
   RNGseedGeneratorMutex.unlock();
