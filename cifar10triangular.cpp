@@ -31,7 +31,7 @@ Picture* OpenCVPicture::distort(RNG& rng, batchType type) {
   return pic;
 }
 
-class DeepC2Triangular : public SparseConvTraingLeNet {
+class DeepC2Triangular : public SparseConvTriangLeNet {
 public:
   DeepC2Triangular (int dimension, int l, int k, ActivationFunction fn, int nInputFeatures, int nClasses, float p=0.0f, int cudaDevice=-1, int nTop=1);
 };

@@ -57,12 +57,13 @@ int main( int argc, char *argv[] ) {
 
   if ( argc>1 ) 
      max_epoch = std::atoi( argv[1] );
- 
-  if ( max_epoch<2 ) 
+
+/** FOR TESTING PURPOSES 
+  if ( max_epoch>2 ) 
      max_epoch = 2;
- 
-/*mpch   for (epoch++;;epoch++) { */
-  for ( epoch=1; epoch<max_epoch; epoch++ ) {
+ **/ 
+
+for ( epoch=1; epoch<max_epoch; epoch++ ) {
     std::cout <<"epoch: " << epoch << " " << std::flush;
     cnn.processDataset( trainSet, batchSize, 0.003*exp(-0.005 * epoch) );
     if (epoch%50==0) {

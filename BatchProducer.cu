@@ -39,8 +39,8 @@ SpatiallySparseBatch* BatchProducer::nextBatch() {
   }
 }
 
-void BatchProducer::batchProducerThread(int nThread) {
-  cudaSetDevice( cnn.deviceID[0] );
+void BatchProducer::batchProducerThread(int nThread, int gpuID) {
+  cudaSetDevice( cnn.deviceID[gpuID] );
   RNG rng;
   for (int c=nThread;c<nBatches;c+=NBATCHPRODUCERTHREADS) {
     int cc=c%NBATCHPRODUCERTHREADS;
@@ -117,9 +117,20 @@ BatchProducer::BatchProducer (SparseConvNetCUDA& cnn,
     RNG rng;
     rng.vectorShuffle(permutation);
   }
-  for (int nThread=0; nThread<NBATCHPRODUCERTHREADS; nThread++)
-    workers.emplace_back(std::thread(&BatchProducer::batchProducerThread,this,nThread));
+
+/*************************************************************************************
+ ** Multi-GPU support note
+ **
+ ** First try - spread total number of batch producer threads among the different GPUs
+ *************************************************************************************/
+  int gpu_id = 0;
+  for (int nThread=0; nThread<NBATCHPRODUCERTHREADS; nThread++) {
+    workers.emplace_back(std::thread(&BatchProducer::batchProducerThread,this,nThread,gpu_id));
+    gpu_id++;
+    if ( gpu_id>=cnn.numGPUs ) { gpu_id = 0; }
+  }
 }
+
 BatchProducer::~BatchProducer() {
   if (batchCounter<nBatches) {
     SpatiallySparseBatch* batch=nextBatch();
