@@ -40,7 +40,7 @@ SpatiallySparseBatch* BatchProducer::nextBatch() {
 }
 
 void BatchProducer::batchProducerThread(int nThread) {
-  cudaSetDevice(cnn.deviceID);
+  cudaSetDevice( cnn.deviceID[0] );
   RNG rng;
   for (int c=nThread;c<nBatches;c+=NBATCHPRODUCERTHREADS) {
     int cc=c%NBATCHPRODUCERTHREADS;

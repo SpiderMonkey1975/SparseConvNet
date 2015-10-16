@@ -8,33 +8,35 @@
 #include "utilities.h"
 #include "Regions.h"
 
-__global__ void dPropForwardToMatrixMultiplyInput
-(float* d_features, float* d_convolved, int* rules, int count, int nIn) {
-  __shared__ int r[KERNELBLOCKSIZE];
-  for (int c=blockIdx.x*KERNELBLOCKSIZE; c<count; c+=(1<<12)*KERNELBLOCKSIZE) {
-    int n=min(KERNELBLOCKSIZE,count-c);
-    r[threadIdx.x]=(threadIdx.x<n)?rules[c+threadIdx.x]*nIn:0;
-    __syncthreads();
-    for (int q=0;q<n;q++) {
-      int rq=r[q];
-      int i=(c+q)*nIn;
-      for (int j=threadIdx.x;j<nIn;j+=KERNELBLOCKSIZE) {
-        d_convolved[i+j]=(rq>=0)?d_features[rq+j]:0;    //If padding is used, check rq!=-1
-      }
+__global__ void dPropForwardToMatrixMultiplyInput( float* d_features, float* d_convolved, int* rules, int count, int nIn ) {
+
+    __shared__ int r[KERNELBLOCKSIZE];
+               int i, c, n, q, rq, j;
+
+    for ( c=blockIdx.x*KERNELBLOCKSIZE; c<count; c+=(1<<12)*KERNELBLOCKSIZE ) {
+        n = min(KERNELBLOCKSIZE,count-c);
+        r[threadIdx.x] = (threadIdx.x<n)?rules[c+threadIdx.x]*nIn:0;
+        __syncthreads();
+
+        for ( q=0; q<n; q++ ) {
+            rq = r[q];
+            i  = (c+q) * nIn;
+            for ( j=threadIdx.x; j<nIn; j+=KERNELBLOCKSIZE ) {
+                d_convolved[i+j]=(rq>=0)?d_features[rq+j]:0;    //If padding is used, check rq!=-1
+            }
+        }
+        __syncthreads();
     }
-    __syncthreads();
-  }
 }
+
 void propForwardToMatrixMultiply(float* inFeatures, float* outFeatures, int* rules, int count, int nIn) {
-  assert(count>0);
-  int batch=min(1<<12,(count+KERNELBLOCKSIZE-1)/KERNELBLOCKSIZE);
-  dPropForwardToMatrixMultiplyInput<<<batch,KERNELBLOCKSIZE,0,cnnMemStream->stream>>>
-    (inFeatures,
-     outFeatures,
-     rules,
-     count, nIn);
-  cudaCheckError();
+     assert(count>0);
+     int batch=min(1<<12,(count+KERNELBLOCKSIZE-1)/KERNELBLOCKSIZE);
+     dPropForwardToMatrixMultiplyInput<<<batch,KERNELBLOCKSIZE,0,cnnMemStream->stream>>>(inFeatures,outFeatures,rules,
+                                                                                         count, nIn);
+     cudaCheckError();
 }
+
 __global__ void dPropBackwardFromMatrixMultiplyOutput
 (float* d_deltaGrid, float* d_deltaConvolved, int* rules, int count, int nIn) {
   __shared__ int r[KERNELBLOCKSIZE];
@@ -45,14 +47,16 @@ __global__ void dPropBackwardFromMatrixMultiplyOutput
     for (int q=0;q<n;q++) {
       int rq=r[q];
       int i=(c+q)*nIn;
-      for (int j=threadIdx.x;j<nIn;j+=KERNELBLOCKSIZE) {
-        if (/*d_deltaConvolved[i+j]!=0 and*/ rq>=0)
-          atomicAdd(&d_deltaGrid[rq+j],d_deltaConvolved[i+j]);
+      if ( rq >= 0 ) {
+         for (int j=threadIdx.x;j<nIn;j+=KERNELBLOCKSIZE) {
+             atomicAdd(&d_deltaGrid[rq+j],d_deltaConvolved[i+j]);
+         }
       }
     }
     __syncthreads();
   }
 }
+
 void propBackwardFromMatrixMultiply(float* inDFeatures, float* outDFeatures, int* rules, int count, int nIn) {
   assert(count>0);
   int batch=min(1<<12,(count+KERNELBLOCKSIZE-1)/KERNELBLOCKSIZE);
@@ -117,38 +121,31 @@ void ConvolutionalLayer::preprocess
   output.featuresPresent.resize(input.featuresPresent.size()*fs);
   convolutionFeaturesPresent(input.featuresPresent.hVector(), output.featuresPresent.hVector(), input.nFeatures, input.featuresPresent.size(), fs);
 }
-void ConvolutionalLayer::forwards
-(SpatiallySparseBatch &batch,
- SpatiallySparseBatchInterface &input,
- SpatiallySparseBatchInterface &output) {
-  output.sub->features.resize(output.nSpatialSites*output.featuresPresent.size());
-  propForwardToMatrixMultiply(input.sub->features.dPtr(),
-                              output.sub->features.dPtr(),
-                              output.rules.dPtr(),
-                              output.nSpatialSites*fs,
-                              input.featuresPresent.size());
+
+void ConvolutionalLayer::forwards( SpatiallySparseBatch &batch,SpatiallySparseBatchInterface &input,
+                                   SpatiallySparseBatchInterface &output ) {
+     output.sub->features.resize(output.nSpatialSites*output.featuresPresent.size());
+     propForwardToMatrixMultiply( input.sub->features.dPtr(),output.sub->features.dPtr(),
+                                  output.rules.dPtr(),output.nSpatialSites*fs,
+                                  input.featuresPresent.size() );
 }
-void ConvolutionalLayer::backwards
-(SpatiallySparseBatch &batch,
- SpatiallySparseBatchInterface &input,
- SpatiallySparseBatchInterface &output,
- float learningRate,
- float momentum) {
-  if (input.backpropErrors) {
-    input.sub->dfeatures.resize(input.nSpatialSites*input.featuresPresent.size());
-    input.sub->dfeatures.setZero(*cnnMemStream);
-    propBackwardFromMatrixMultiply(input.sub->dfeatures.dPtr(),
-                                   output.sub->dfeatures.dPtr(),
-                                   output.rules.dPtr(),
-                                   output.nSpatialSites*fs,
-                                   input.featuresPresent.size());
-    // output.sub->features.resize(0);
-    // output.sub->dfeatures.resize(0);
-    // cudaCheckError();
-  }
+
+void ConvolutionalLayer::backwards( SpatiallySparseBatch &batch, SpatiallySparseBatchInterface &input,
+                                    SpatiallySparseBatchInterface &output, float learningRate,
+                                    float momentum ) {
+     if (input.backpropErrors) {
+        input.sub->dfeatures.resize(input.nSpatialSites*input.featuresPresent.size());
+        input.sub->dfeatures.setZero(*cnnMemStream);
+        propBackwardFromMatrixMultiply(input.sub->dfeatures.dPtr(),
+                                       output.sub->dfeatures.dPtr(),
+                                       output.rules.dPtr(),
+                                       output.nSpatialSites*fs,
+                                       input.featuresPresent.size());
+     }
 }
+
 int ConvolutionalLayer::calculateInputSpatialSize(int outputSpatialSize) {
-  outSpatialSize=outputSpatialSize;
-  inSpatialSize=filterSize+(outputSpatialSize-1)*filterStride;
-  return inSpatialSize;
+    outSpatialSize = outputSpatialSize;
+    inSpatialSize = filterSize+(outputSpatialSize-1)*filterStride;
+    return inSpatialSize;
 }

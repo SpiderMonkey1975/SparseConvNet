@@ -1,9 +1,9 @@
 #include "SparseConvNet.h"
 #include "NetworkArchitectures.h"
 #include "SpatiallySparseDatasetCIFAR10.h"
+#include <string>
 
 int epoch=0;
-int cudaDevice=1; //PCI bus ID, -1 for default GPU
 int batchSize=50;
 
 Picture* OpenCVPicture::distort(RNG& rng, batchType type) {
@@ -28,12 +28,12 @@ Picture* OpenCVPicture::distort(RNG& rng, batchType type) {
 
 class CNN : public SparseConvNet {
 public:
-  CNN (int dimension, int l, int k, ActivationFunction fn, int nInputFeatures, int nClasses, float p=0.0f, int cudaDevice=-1, int nTop=1);
+  CNN (int dimension, int l, int k, ActivationFunction fn, int nInputFeatures, int nClasses, float p=0.0f, int nTop=1);
 };
 CNN::CNN
 (int dimension, int l, int k, ActivationFunction fn,
- int nInputFeatures, int nClasses, float p, int cudaDevice, int nTop)
-  : SparseConvNet(dimension,nInputFeatures, nClasses, cudaDevice, nTop) {
+ int nInputFeatures, int nClasses, float p, int nTop)
+  : SparseConvNet(dimension,nInputFeatures, nClasses, nTop) {
   for (int i=0;i<=l;i++) {
     addLeNetLayerMP((i+1)*k,2,1,1,1,fn,p*i*1.0f/l);
     addLeNetLayerMP((i+1)*k,2,1,(i<l)?3:1,(i<l)?2:1,fn,p*i*1.0f/l);
@@ -41,7 +41,8 @@ CNN::CNN
   addSoftmaxLayer();
 }
 
-int main() {
+int main( int argc, char *argv[] ) {
+  int max_epoch=2;
   std::string baseName="weights/cifar10";
 
   SpatiallySparseDataset trainSet=Cifar10TrainSet();
@@ -49,14 +50,21 @@ int main() {
 
   trainSet.summary();
   testSet.summary();
-  CNN cnn(2,5,32,VLEAKYRELU,trainSet.nFeatures,trainSet.nClasses,0.0f,cudaDevice);
-  //DeepCNet cnn(2,5,32,VLEAKYRELU,trainSet.nFeatures,trainSet.nClasses,0.0f,cudaDevice);
+  CNN cnn(2,5,32,VLEAKYRELU,trainSet.nFeatures,trainSet.nClasses,0.0f);
 
   if (epoch>0)
     cnn.loadWeights(baseName,epoch);
-  for (epoch++;;epoch++) {
+
+  if ( argc>1 ) 
+     max_epoch = std::atoi( argv[1] );
+ 
+  if ( max_epoch<2 ) 
+     max_epoch = 2;
+ 
+/*mpch   for (epoch++;;epoch++) { */
+  for ( epoch=1; epoch<max_epoch; epoch++ ) {
     std::cout <<"epoch: " << epoch << " " << std::flush;
-    cnn.processDataset(trainSet, batchSize,0.003*exp(-0.005 * epoch));
+    cnn.processDataset( trainSet, batchSize, 0.003*exp(-0.005 * epoch) );
     if (epoch%50==0) {
       cnn.saveWeights(baseName,epoch);
       cnn.processDataset(testSet,  batchSize);

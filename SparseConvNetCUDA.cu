@@ -22,10 +22,11 @@
 #include "SpatiallySparseDataset.h"
 
 
+int const SparseConvNetCUDA::deviceID[] = {0,1,2,3};
+
 SparseConvNetCUDA::SparseConvNetCUDA(int dimension,
                                      int nInputFeatures,
                                      int nClasses,
-                                     int pciBusID,
                                      int nTop) :
   dimension(dimension),
   nInputFeatures(nInputFeatures),
@@ -33,7 +34,7 @@ SparseConvNetCUDA::SparseConvNetCUDA(int dimension,
   nTop(nTop) {
   std::cout << "Sparse CNN - dimension=" << dimension << " nInputFeatures=" << nInputFeatures << " nClasses=" << nClasses << std::endl;
   nOutputFeatures=nInputFeatures;
-  deviceID=initializeGPU(pciBusID);
+  numGPUs = initializeGPU();
   }
 
 
@@ -74,13 +75,16 @@ void SparseConvNetCUDA::addConvolutionalLayer(int nFeatures,
     addLearntLayer(nFeatures,activationFn,dropout,powf(filterSize*1.0/filterStride/poolingToFollow,2));
   }
 }
-void SparseConvNetCUDA::addLeNetLayerMP(int nFeatures, int filterSize, int filterStride, int poolSize, int poolStride, ActivationFunction activationFn, float dropout, int minActiveInputs) {
-  addConvolutionalLayer(nFeatures,filterSize,filterStride,activationFn,dropout,minActiveInputs,poolSize);
-  if (poolSize>1) {
-    std::cout << layers.size() << ":";
-    layers.push_back(new MaxPoolingLayer(poolSize, poolStride,dimension));
-  }
+
+void SparseConvNetCUDA::addLeNetLayerMP( int nFeatures, int filterSize, int filterStride, int poolSize, int poolStride, 
+                                         ActivationFunction activationFn, float dropout, int minActiveInputs ) {
+     addConvolutionalLayer( nFeatures,filterSize,filterStride,activationFn,dropout,minActiveInputs,poolSize );
+     if ( poolSize>1 ) {
+        std::cout << layers.size() << ":";
+        layers.push_back( new MaxPoolingLayer(poolSize, poolStride,dimension) );
+     }
 }
+
 void SparseConvNetCUDA::addLeNetLayerROFMP(int nFeatures, int filterSize, int filterStride, int poolSize, float fmpShrink, ActivationFunction activationFn, float dropout, int minActiveInputs) {
   addConvolutionalLayer(nFeatures,filterSize,filterStride,activationFn,dropout,minActiveInputs,fmpShrink);
   if (fmpShrink>1) {

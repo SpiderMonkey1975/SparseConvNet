@@ -21,7 +21,7 @@ class SparseConvNet {
 private:
   std::unique_ptr<SparseConvNetCUDA> cnn;
 public:
-  SparseConvNet(int dimension, int nInputFeatures, int nClasses, int pciBusID=-1, int nTop=1);
+  SparseConvNet(int dimension, int nInputFeatures, int nClasses, int nTop=1);
   ~SparseConvNet();
   void addLeNetLayerMP(int nFeatures, int filterSize, int filterStride, int poolSize, int poolStride, ActivationFunction activationFn=RELU, float dropout=0.0f, int minActiveInputs=1);
   void addLeNetLayerPOFMP(int nFeatures, int filterSize, int filterStride, int poolSize, float fmpShrink, ActivationFunction activationFn=RELU, float dropout=0.0f, int minActiveInputs=1);
@@ -42,7 +42,7 @@ class SparseConvTriangLeNet {
 private:
   std::auto_ptr<SparseConvNetCUDA> cnn;
 public:
-  SparseConvTriangLeNet(int dimension, int nInputFeatures, int nClasses, int pciBusID=-1, int nTop=1);
+  SparseConvTriangLeNet(int dimension, int nInputFeatures, int nClasses, int nTop=1);
   ~SparseConvTriangLeNet();
   void addLeNetLayerMP(int nFeatures, int filterSize, int filterStride, int poolSize, int poolStride, ActivationFunction activationFn=RELU, float dropout=0.0f, int minActiveInputs=1);
   void addTerminalPoolingLayer(int poolSize);

@@ -64,33 +64,46 @@ int intRound(int a, int d) {
   return round(a*1.0/d)*d;
 }
 
-int initializeGPU(int pciBusID) { //pciBusID, or -1 for the first device
-  int nGPU;
-  int deviceID=-1;
-  cudaSafeCall(cudaGetDeviceCount(&nGPU));
-  for (int i=0;i<nGPU;i++) {
-    cudaDeviceProp prop;
-    cudaSafeCall(cudaGetDeviceProperties(&prop, i));
-    if (i==0 and pciBusID==-1)
-      pciBusID=prop.pciBusID;
-    if (prop.pciBusID==pciBusID) {
-      std::cout << "*";
-      cudaSafeCall(cudaSetDevice(i));
-      deviceID=i;
-    } else {
-      std::cout << " ";
+/***
+ *** initializeGPU
+ ***
+ *** C++ subroutine that determines the # of GPUs available for use.  An array containing their
+ *** device IDs is filled. Only the first 4 GPUs will be recognised. 
+ ***==========================================================================================*/
+
+int initializeGPU() { 
+
+    int         i, nGPU, cnt;
+    cudaError_t status;
+  
+    status = cudaGetDeviceCount( &nGPU );
+    if ( status==cudaSuccess ) { std::cout << " CUDA-capable devices located" << std::endl; }
+    else { 
+       std::cout << "ERROR: no CUDA-capable device located" << std::endl; 
+       exit( 1 );
     }
-    std::cout << prop.pciBusID << " " << prop.name<< " " << (prop.totalGlobalMem>>20) << "MB Compute capability: " << prop.major << "." << prop.minor << std::endl;
-  }
-  assert(deviceID>=0);
-  cublasError(cublasCreate(&cublasHandle),__FILE__,__LINE__);
-  cnnMemStream = new cudaMemStream();
-  cublasError(cublasSetStream(cublasHandle, cnnMemStream->stream));
-  return deviceID;
+
+    cnt = min( nGPU, 4 );
+
+    for ( i=0;i<cnt;i++ ) {
+        cudaDeviceProp prop;
+        status = cudaGetDeviceProperties( &prop,i );
+        status = cudaSetDevice( i );
+        std::cout << "*" << prop.pciBusID << " " << prop.name << " " << (prop.totalGlobalMem>>20) 
+                  << "MB Compute capability: " << prop.major << "." << prop.minor << std::endl;
+    }
+
+    cublasError(cublasCreate(&cublasHandle),__FILE__,__LINE__);
+    cnnMemStream = new cudaMemStream();
+    cublasError(cublasSetStream(cublasHandle, cnnMemStream->stream));
+
+    return cnt;
 }
+
 //////////////////////////////////////////////////////////////////////////////////////////////////
 //GEMM for matrices in row major form. ///////////////////////////////////////////////////////////
 //A is l*m, B is m*r, C is l*r. Set C to alpha A B + beta C.
+
 void d_rowMajorSGEMM_alphaAB_betaC (cublasHandle_t handle,
                                     float* A, float* B, float* C,
                                     int l, int m, int r,
@@ -123,11 +136,11 @@ void d_rowMajorSGEMM_alphaAtBt_betaC (cublasHandle_t handle,
   cublasError(cublasSgemm (handle, CUBLAS_OP_T, CUBLAS_OP_T,r,l,m,&alpha,B,m,A,l,&beta,C,r), file, linenumber);
 }
 
-
 cudaMemStream::cudaMemStream() : pinnedMemorySize(1<<24) {
   cudaSafeCall(cudaMallocHost(&pinnedMemory,pinnedMemorySize));
   cudaSafeCall(cudaStreamCreate(&stream));
 }
+
 cudaMemStream::~cudaMemStream() {
   cudaSafeCall(cudaStreamDestroy(stream));
   cudaFreeHost(pinnedMemory);

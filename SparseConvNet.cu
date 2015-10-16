@@ -2,8 +2,8 @@
 #include "SparseConvNetCUDA.h"
 #include "utilities.h"
 
-SparseConvNet::SparseConvNet(int dimension, int nInputFeatures, int nClasses, int pciBusID, int nTop)
-  : cnn(new SparseConvNetCUDA(dimension, nInputFeatures, nClasses, pciBusID, nTop)) {
+SparseConvNet::SparseConvNet(int dimension, int nInputFeatures, int nClasses, int nTop)
+  : cnn(new SparseConvNetCUDA(dimension, nInputFeatures, nClasses, nTop)) {
 }
 
 SparseConvNet::~SparseConvNet(){
@@ -61,8 +61,8 @@ void SparseConvNet::calculateInputRegularizingConstants(SpatiallySparseDataset d
   cnn->calculateInputRegularizingConstants(dataset);
 }
 
-SparseConvTriangLeNet::SparseConvTriangLeNet(int dimension, int nInputFeatures, int nClasses, int pciBusID, int nTop)
-  : cnn(new SparseConvNetCUDA(dimension, nInputFeatures, nClasses, pciBusID, nTop)) {
+SparseConvTriangLeNet::SparseConvTriangLeNet(int dimension, int nInputFeatures, int nClasses, int nTop)
+  : cnn(new SparseConvNetCUDA(dimension, nInputFeatures, nClasses, nTop)) {
 }
 SparseConvTriangLeNet::~SparseConvTriangLeNet(){
 }

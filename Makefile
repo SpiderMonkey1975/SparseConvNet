@@ -12,6 +12,9 @@ LIBS=-L/usr/local/lib -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv
 
 clean:
 	rm *.o
+
+all: cifar10
+	
 casia: $(OBJ) OnlineHandwritingPicture.o SpatiallySparseDatasetCasiaOLHWDB.o casia.o
 	$(NVCC) -o casia $(OBJ) OnlineHandwritingPicture.o SpatiallySparseDatasetCasiaOLHWDB.o casia.o $(LIBS) $(NVCCFLAGS)
 

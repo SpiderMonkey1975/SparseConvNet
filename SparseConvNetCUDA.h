@@ -12,6 +12,12 @@
 //You should have received a copy of the GNU General Public License
 //along with SparseConvNet.  If not, see <http://www.gnu.org/licenses/>.
 
+/**********************************************************************
+ ** Multi-GPU support note.
+ **
+ ** Support for up to 4 GPUs currently implemented.
+ **********************************************************************/
+
 #pragma once
 #include "SpatiallySparseBatch.h"
 #include "SpatiallySparseLayer.h"
@@ -30,12 +36,12 @@ public:
   int inputSpatialSize;
   int nInputFeatures;
   int nOutputFeatures;
-  int deviceID;
+  int numGPUs;
+  static int const deviceID[]; 
   std::vector<float> inputNormalizingConstants;
   SparseConvNetCUDA (int dimension,
                      int nInputFeatures,
                      int nClasses,
-                     int pciBusID=-1,
                      int nTop=1);
   void processBatch(SpatiallySparseBatch& batch, float learningRate, float momentum, std::ofstream& f, std::ofstream& g);
   void processIndexLearnerBatch(SpatiallySparseBatch& batch, float learningRate, float momentum, std::ofstream& f);

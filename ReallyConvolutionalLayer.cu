@@ -42,8 +42,6 @@ __global__ void dMultiply_Input_Weights_Output
     int n=min(KERNELBLOCKSIZE,nIn*fs-k);
     int f=(k+tx)/nIn;
     int ff=(k+tx)%nIn;
-    //int r=(tx<n and by+ty<outputNSpatialSites)?rules[(by+ty)*fs+f]:-1; /////
-    //As[ty][tx]=(r>=0)?inFeatures[r*nIn+(ff)]:0; ////////
     As[ty][tx]=(r[ty][f]>=0)?inFeatures[r[ty][f]*nIn+(ff)]:0;
     Bs[ty][tx]=(ty<n)?W[(k+ty)*nOut+(bx+tx)]:0;
     __syncthreads();
@@ -85,7 +83,6 @@ __global__ void dMultiply_dOutput_WT_dInput
   int ff=(bx+tx)%nIn;
   if (by+ty<outputNSpatialSites && f+tx<nIn*fs) {
     int r=rules[(by+ty)*fs+f];
-    //dInFeatures[r*nIn+ff]+=acc;
     atomicAdd(&dInFeatures[r*nIn+ff],acc);
   }
 }
